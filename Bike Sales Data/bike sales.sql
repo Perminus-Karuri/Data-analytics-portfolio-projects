@@ -1,3 +1,16 @@
+-- KPIs
+-- 1. Total sales made
+SELECT ROUND(SUM(quantity * list_price * (1 - discount)), 2) AS total_sales
+FROM order_items;
+
+-- 2. Total orders made
+SELECT COUNT(DISTINCT order_id) AS total_orders
+FROM orders;
+
+-- 3. Total customers served
+SELECT COUNT(DISTINCT customer_id) AS total_customers
+FROM customers;
+
 -- 1. Total sales revenue by product category
 SELECT 
 		category_name,
@@ -15,25 +28,15 @@ ORDER BY 2 DESC
 -- Mountain bikes category generates the most sales.
 
 -- 2. Top 5 best selling products categorized by brand
-WITH best_seller AS (
-SELECT 
-		t3.product_name,
-        t4.brand_name,
-        SUM(t2.quantity) AS total_qty_ordered,
-        DENSE_RANK() OVER (PARTITION BY brand_name ORDER BY SUM(t2.quantity) DESC) AS qty_rankings
-FROM orders t1
-INNER JOIN order_items t2
-ON t1.order_id = t2.order_id
-INNER JOIN products t3
-ON t2.product_id = t3.product_id
-INNER JOIN brands t4
-ON t3.brand_id = t4.brand_id
-GROUP BY t3.product_name, t4.brand_name)
-SELECT *
-FROM best_seller
-WHERE qty_rankings <= 5
-;
--- Electra brand is the most selling brand
+SELECT b.brand_name, ROUND(SUM(i.quantity * i.list_price * (1 - i.discount)), 2) AS total_sales
+FROM order_items i
+JOIN products p
+ON i.product_id = p.product_id
+JOIN brands b
+ON p.brand_id = b.brand_id
+GROUP BY brand_name
+ORDER BY 2 DESC;
+-- Trek brand is the with the most sales
 
 -- 3. Customer lifetime value (CLV) - Listing all customers with their total spend and also the total amount of orders they placed.
 SELECT t1.customer_id,
@@ -81,7 +84,7 @@ ORDER BY 3 DESC, 2 DESC
 -- Trek bicycle brand is the most sold brand despite being the second ordered brand with only 1235 orders
 -- as compared to Electra brand with the highest orders with 1729 but is the second most sold brand.
 
--- 6. Finding top 5 customers per store - customer name, total orders, total amount, store name
+-- 6. Finding top 5 customers per store by revenue generated/sales - customer name, total orders, total amount, store name
 WITH cust_rank AS (
 SELECT
 	   CONCAT(first_name, ' ', last_name) AS 'Customer name',
@@ -103,6 +106,9 @@ SELECT *
 FROM cust_rank
 WHERE rankings <= 5
 ;
+-- Top customers for Baldwin Bikes store are: Sharyn Hopkins, Pamelia Newman, Abby Gamble, Lyndsey Bean and Emmitt Sanchez
+-- Top customers for Rowlett Bikes store are: Elinore Aguilar, Abram Copeland, Mozelle Carter, Lorrie Becker and Charmain Webster
+-- Top 5 customers for Santa Cruz Bikes store are: Tameka Fisher, Brigid Sharp, Williemae Holloway, Kasha Todd and Deloris Burke
 
 -- 7. Staff who made the most sales
 SELECT t2.staff_id,
@@ -138,12 +144,12 @@ WHERE t1.quantity < 10
 SELECT concat(first_name, ' ', last_name) AS customer_name, store_name,
 		ROW_NUMBER() OVER (PARTITION BY store_name ORDER BY datediff(shipped_date, required_date) ASC) as late_serial_no,
 		order_date, required_date, shipped_date,
-		datediff(shipped_date, required_date) AS late_deliveries_by_days
+		datediff(required_date, shipped_date) AS late_deliveries_by_days
 FROM orders t1
 INNER JOIN customers t2
 ON t1.customer_id = t2.customer_id
 INNER JOIN stores t3
 ON t1.store_id = t3.store_id
-WHERE datediff(shipped_date, required_date) < 0
+WHERE datediff(shipped_date, required_date) > 0
 ;
--- Baldwine bikes store has the greatest number of late deliveries with 331 late deliveries.
+-- There were late ddeliveries experienced with maximum delivery by days being 2 days and the minimun being 1 day.
